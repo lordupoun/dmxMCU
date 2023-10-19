@@ -102,10 +102,23 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  /*while(HAL_UART_Receive(&huart1, uartBuff1, 1, 1) != HAL_OK)
+  uint8_t uartByte1=0;
+  uint8_t uartByte2=0;
+  uint32_t ticks1=0;
+  uint32_t ticks2=0;
+  do //BACHA, záleží kdy vyčistíš monitor; zkusit jiný program, zkusit najít EOS
   	  {
-
-  	  }*/
+	  	  HAL_TIM_Base_Start_IT(&htim2);
+	  	  HAL_UART_Receive(&huart1, uartByte1, 1, 100000); //doplnit když byte nepřečte
+	  	  ticks1=__HAL_TIM_GET_COUNTER(&htim2);
+	  	  HAL_UART_Receive(&huart1, uartByte2, 1, 100000);
+	  	  ticks2=__HAL_TIM_GET_COUNTER(&htim2);
+  	  }
+  while(ticks2-ticks1<10);
+  HAL_Delay(10);
+  HAL_UART_Receive(&huart1, uartBuff1, 513,100);
+  HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
+  //uartBuff
   //HAL_UART_Receive_IT(&huart1, uartBuff1, 513);
   //HAL_UART_Receive_IT(&huart1, uartBuff, 513);
   //-------------------------------------------------Globalni promenna jako flag -> volatile - standardne by nebyla dost rychla
@@ -117,11 +130,13 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-
-	  HAL_UART_Receive_IT(&huart1, uartBuff1, 513); //dokud nedostane všech 513, nekončí -> to samé v interruptu -> v interruptu aktivovat nový, který bude čekat na načtení ale zárove�? odeslání nechat až při úspěšném odeslání -> (odelsání aktivuje čtení jednej a odesílání druhej, čtení aktivuje odeslání jednej a čtení druhej)
+    /* USER CODE BEGIN 3 */HAL_UART_Receive(&huart1, uartBuff1, 513,100); //no jo ale když vypadne komunikace tak jsem v... -> timout musí být jako délka jednoho paketu
+    HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
+	  //HAL_UART_Receive_IT(&huart1, uartBuff1, 513);
+	 //HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+	   //dokud nedostane všech 513, nekončí -> to samé v interruptu -> v interruptu aktivovat nový, který bude čekat na načtení ale zárove�? odeslání nechat až při úspěšném odeslání -> (odelsání aktivuje čtení jednej a odesílání druhej, čtení aktivuje odeslání jednej a čtení druhej)
 	  //HAL_Delay(100);
-	  HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+
   }
   /* USER CODE END 3 */
 }
@@ -184,9 +199,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 1000;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 65535;
+  htim2.Init.Period = 7200;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
