@@ -77,7 +77,7 @@ int main(void)
 		//uartBuff1[i]='0';
 		uartBuff2[i]='0';
 	}
-
+	//uartBuff1[513]='\n';
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,38 +102,27 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  uint8_t uartByte1=0;
-  uint8_t uartByte2=0;
-  uint32_t ticks1=0;
-  uint32_t ticks2=0;
-  do //BACHA, záleží kdy vyčistíš monitor; zkusit jiný program, zkusit najít EOS
-  	  {
-	  	  HAL_TIM_Base_Start_IT(&htim2);
-	  	  HAL_UART_Receive(&huart1, uartByte1, 1, 100000); //doplnit když byte nepřečte
-	  	  ticks1=__HAL_TIM_GET_COUNTER(&htim2);
-	  	  HAL_UART_Receive(&huart1, uartByte2, 1, 100000);
-	  	  ticks2=__HAL_TIM_GET_COUNTER(&htim2);
-  	  }
-  while(ticks2-ticks1<10);
-  HAL_Delay(10);
-  HAL_UART_Receive(&huart1, uartBuff1, 513,100);
-  HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
+  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //uartBuff1_SIZE; v gitu TEST si to bralo data a ukládalo je ve špatný chvíle (byly tam vícekrát a psalo je to na špatný pozice...); v YATu to bude vždycky rozhozený - záleží kdy ho spustím
+  //HAL_UART_Receive(&huart1, uartBuff1, 513,100); //Stačí dodělat automatický čtení a automatický odeslání -> Je jedno kdy se to odešle buffer se stejně mění nárazově... ne?
+  //HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
   //uartBuff
   //HAL_UART_Receive_IT(&huart1, uartBuff1, 513);
   //HAL_UART_Receive_IT(&huart1, uartBuff, 513);
   //-------------------------------------------------Globalni promenna jako flag -> volatile - standardne by nebyla dost rychla
   /* USER CODE END 2 */
-
+  //TODO: //časovač nastavenej na dýlku paketu plus idle
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */HAL_UART_Receive(&huart1, uartBuff1, 513,100); //no jo ale když vypadne komunikace tak jsem v... -> timout musí být jako délka jednoho paketu
-    HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
+    /* USER CODE BEGIN 3 */
+	//HAL_UART_Receive(&huart1, uartBuff1, 513,100); //no jo ale když vypadne komunikace tak jsem v... -> timout musí být jako délka jednoho paketu
+    //HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
 	  //HAL_UART_Receive_IT(&huart1, uartBuff1, 513);
-	 //HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+	  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
+	 HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
 	   //dokud nedostane všech 513, nekončí -> to samé v interruptu -> v interruptu aktivovat nový, který bude čekat na načtení ale zárove�? odeslání nechat až při úspěšném odeslání -> (odelsání aktivuje čtení jednej a odesílání druhej, čtení aktivuje odeslání jednej a čtení druhej)
 	  //HAL_Delay(100);
 
@@ -359,6 +348,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	//HAL_UART_Transmit_IT(&huart1, uartBuff, sizeof (uartBuff));
 	//HAL_Delay(1);
 }*/
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+	HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
+	//HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+}
 
 /* USER CODE END 4 */
 
