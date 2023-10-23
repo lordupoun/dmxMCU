@@ -102,7 +102,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim2);
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //uartBuff1_SIZE; v gitu TEST si to bralo data a ukládalo je ve špatný chvíle (byly tam vícekrát a psalo je to na špatný pozice...); v YATu to bude vždycky rozhozený - záleží kdy ho spustím
+  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
   //HAL_UART_Receive(&huart1, uartBuff1, 513,100); //Stačí dodělat automatický čtení a automatický odeslání -> Je jedno kdy se to odešle buffer se stejně mění nárazově... ne?
   //HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
   //uartBuff
@@ -110,7 +112,7 @@ int main(void)
   //HAL_UART_Receive_IT(&huart1, uartBuff, 513);
   //-------------------------------------------------Globalni promenna jako flag -> volatile - standardne by nebyla dost rychla
   /* USER CODE END 2 */
-  //TODO: //časovač nastavenej na dýlku paketu plus idle
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -121,8 +123,9 @@ int main(void)
 	//HAL_UART_Receive(&huart1, uartBuff1, 513,100); //no jo ale když vypadne komunikace tak jsem v... -> timout musí být jako délka jednoho paketu
     //HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
 	  //HAL_UART_Receive_IT(&huart1, uartBuff1, 513);
-	  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
-	 HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+	 //HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
+	 //HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+	 //HAL_Delay(100);
 	   //dokud nedostane všech 513, nekončí -> to samé v interruptu -> v interruptu aktivovat nový, který bude čekat na načtení ale zárove�? odeslání nechat až při úspěšném odeslání -> (odelsání aktivuje čtení jednej a odesílání druhej, čtení aktivuje odeslání jednej a čtení druhej)
 	  //HAL_Delay(100);
 
@@ -190,7 +193,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 1000;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 7200;
+  htim2.Init.Period = 1656;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -348,12 +351,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	//HAL_UART_Transmit_IT(&huart1, uartBuff, sizeof (uartBuff));
 	//HAL_Delay(1);
 }*/
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //nevykonává se, proč?
 {
 	HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
+	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	//HAL_Delay(100);
 	//HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
 }
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	HAL_UART_Transmit_IT(&huart1, uartBuff1, 513);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+}
 /* USER CODE END 4 */
 
 /**
