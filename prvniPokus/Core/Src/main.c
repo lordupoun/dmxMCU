@@ -21,6 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ili9341.h"
+#include "ili9341_gfx.h"
+//#include "ili9341_font.h"
+
+//#include "snow_tiger.h"
 
 /* USER CODE END Includes */
 
@@ -40,21 +45,27 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_tx;
+
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+ili9341_t *_lcd;
+//ina260_t *_pow;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -62,6 +73,43 @@ static void MX_TIM2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint8_t uartBuff1[513];
+ili9341_t *_screen;
+
+ili9341_t *screen(void)
+{
+  return _screen;
+}
+int lcdStatus=0; //TODO: přepsat na uint
+uint16_t x1;
+uint16_t y1;
+void screenTouchBegin(ili9341_t *lcd, uint16_t x, uint16_t y)
+{
+
+
+		ili9341_touch_coordinate(lcd, &x1, &y1);
+		lcdStatus=1;
+		//x1=x;
+		//y1=y;
+
+
+}
+
+void screenTouchEnd(ili9341_t *lcd, uint16_t x, uint16_t y)
+{
+	//ili9341_draw_string(_screen, textAttr, "Cus picus!!!!!");
+}
+/*ili9341_t *screen(void)
+{
+  return _screen;
+}*/
+
+/*ina260_t *power(void)
+{
+  return _pow;
+}*/
+
+
+
 //uint8_t uartBuff2[513];
 /* USER CODE END 0 */
 
@@ -76,12 +124,18 @@ int main(void)
 	uartBuff1[1]=255;
 	uartBuff1[2]=255;
 	uartBuff1[3]=255;
+	ili9341_calibrate_scalar(_screen,0,0,320,240);
 	/*for(int i=0;i<514;i++)
 	{
 		uartBuff1[i]='1';
 		uartBuff2[i]='0';
 	}*/
 	//uartBuff1[513]='\n';
+	  /* Enable I-Cache-------------------------------------------------------------*/
+	  //SCB_EnableICache();
+
+	  /* Enable D-Cache-------------------------------------------------------------*/
+	  //SCB_EnableDCache();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,11 +156,47 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
-  //MX_USART2_UART_Init();
+  MX_USART2_UART_Init();
   MX_TIM2_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+ /* _pow = ina260_new(
+        &hi2c3,
+        INA260_SLAVE_ADDRESS);
+*/
+
+  _screen = ili9341_new(
+      &hspi1,
+      TFT_RESET_GPIO_Port, TFT_RESET_Pin,
+      TFT_CS_GPIO_Port,    TFT_CS_Pin,
+      TFT_DC_GPIO_Port,    TFT_DC_Pin,
+      isoLandscape,
+      TOUCH_CS_GPIO_Port,  TOUCH_CS_Pin,
+      TOUCH_IRQ_GPIO_Port, TOUCH_IRQ_Pin,
+      itsSupported,
+      itnNormalized);
+  ili9341_text_attr_t textAttr = (ili9341_text_attr_t){
+     .font = &ili9341_font_11x18,
+     .fg_color = ILI9341_WHITE,
+     .bg_color = ILI9341_RED,
+     .origin_x = 10,
+     .origin_y = 10
+   };
+  ili9341_set_touch_pressed_begin(_screen, screenTouchBegin);
+  ili9341_set_touch_pressed_end(_screen, screenTouchEnd);
   HAL_TIM_Base_Start_IT(&htim2);
+  //ili9341_draw_line(_lcd, ILI9341_BLACK, 0,0, 100,100);
+  	  //ili9341_fill_rect(_screen, ILI9341_YELLOW, 11,1, 22,8);
+  	  ili9341_fill_screen(_screen, ILI9341_BLUE);
+  	  HAL_Delay(1000);
+  	ili9341_fill_screen(_screen, ILI9341_PINK);
+  		  ili9341_draw_string(_screen, textAttr, "Cus picus!");
+  		    	  //HAL_Delay(10000);
+  		    	  //ili9341_fill_rect(_screen, ILI9341_YELLOW, 11,1, 22,8);
+  		    	  //HAL_Delay(10000);
+  	//ili9341_calibrate_3point(_screen,320,240);
   //HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 1); //uartBuff1_SIZE; v gitu TEST si to bralo data a ukládalo je ve špatný chvíle (byly tam vícekrát a psalo je to na špatný pozice...); v YATu to bude vždycky rozhozený - záleží kdy ho spustím
   //HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 1);
   //HAL_UART_Receive(&huart1, uartBuff1, 513,100); //Stačí dodělat automatický čtení a automatický odeslání -> Je jedno kdy se to odešle buffer se stejně mění nárazově... ne?
@@ -119,8 +209,22 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
+	  if(lcdStatus==1)
+	  {
+		  ili9341_fill_screen(_screen, ILI9341_BLUE);
+		  char int_str[20];
+		  uint16_t test=5;
+		  sprintf(int_str, "%d", x1);
+		  ili9341_draw_string(_screen, textAttr, int_str);
+		  //ili9341_draw_string(_screen, textAttr, "         "+y1);
+		  lcdStatus=0;
+	  }
+
+
+	  //ILI9341_Fill_Screen(YELLOW);
 	  //uartBuff1[0]=0;
 
     /* USER CODE END WHILE */
@@ -180,6 +284,44 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -200,7 +342,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 1000;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4000; //1656
+  htim2.Init.Period = 1656;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -291,6 +433,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -311,10 +469,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TOUCH_CS_GPIO_Port, TOUCH_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, TFT_DC_Pin|TFT_RESET_Pin|TFT_CS_Pin|GPIO_PIN_13
+                          |GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -323,25 +482,51 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  /*Configure GPIO pin : TOUCH_CS_Pin */
+  GPIO_InitStruct.Pin = TOUCH_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(TOUCH_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pin : TOUCH_IRQ_Pin */
+  GPIO_InitStruct.Pin = TOUCH_IRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(TOUCH_IRQ_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TFT_DC_Pin TFT_RESET_Pin TFT_CS_Pin PB13
+                           PB8 */
+  GPIO_InitStruct.Pin = TFT_DC_Pin|TFT_RESET_Pin|TFT_CS_Pin|GPIO_PIN_13
+                          |GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  switch (GPIO_Pin)
+  {
+    case TOUCH_IRQ_Pin:
+      ili9341_touch_interrupt(_screen);
+      //ili9341_fill_screen(_screen, ILI9341_RED);
+      break;
+
+    default:
+      // unhandled interrupt pin
+      break;
+  }
+}
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	//HAL_UART_Transmit_IT(&huart1, uartBuff1, sizeof (uartBuff1));
