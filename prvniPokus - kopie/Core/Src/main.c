@@ -79,23 +79,23 @@ ili9341_t *screen(void)
 {
   return _screen;
 }
-volatile uint16_t lcdStatus=0; //TODO: přepsat na uint
-uint16_t x1=1;
-uint16_t y1=1;
+int lcdStatus=0; //TODO: přepsat na uint
+uint16_t x1;
+uint16_t y1;
 void screenTouchBegin(ili9341_t *lcd, uint16_t x, uint16_t y)
 {
-	//ili9341_touch_coordinate(lcd, &x1, &y1);
-	lcdStatus=1;
+
+
+		ili9341_touch_coordinate(lcd, &x1, &y1);
+		lcdStatus=1;
+		//x1=x;
+		//y1=y;
 
 
 }
 
 void screenTouchEnd(ili9341_t *lcd, uint16_t x, uint16_t y)
 {
-
-			lcdStatus=1;
-			//x1=x;
-			//y1=y;
 	//ili9341_draw_string(_screen, textAttr, "Cus picus!!!!!");
 }
 /*ili9341_t *screen(void)
@@ -121,11 +121,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	//uartBuff1[0]=127;
-	//; lcdStatus=0;
 	uartBuff1[1]=255;
 	uartBuff1[2]=255;
 	uartBuff1[3]=255;
-	ili9341_calibrate_scalar(_screen,0,0,320,240);
 	/*for(int i=0;i<514;i++)
 	{
 		uartBuff1[i]='1';
@@ -185,13 +183,6 @@ int main(void)
      .origin_x = 10,
      .origin_y = 10
    };
-  ili9341_text_attr_t textAttr1 = (ili9341_text_attr_t){
-       .font = &ili9341_font_11x18,
-       .fg_color = ILI9341_WHITE,
-       .bg_color = ILI9341_PINK,
-       .origin_x = 10,
-       .origin_y = 30
-     };
   ili9341_set_touch_pressed_begin(_screen, screenTouchBegin);
   ili9341_set_touch_pressed_end(_screen, screenTouchEnd);
   HAL_TIM_Base_Start_IT(&htim2);
@@ -221,41 +212,20 @@ int main(void)
   while (1)
   {
 	  if(lcdStatus==1)
-	  	  {
-		  lcdStatus=0;
-		  ili9341_fill_screen(_screen, ILI9341_WHITE);
-		  ili9341_fill_screen(_screen, ILI9341_BLACK);
-	  	  }
-
-
-	  /*HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_RESET);
-	  if(lcdStatus==1)
 	  {
-		  lcdStatus=0;
-		  ili9341_fill_screen(_screen, ILI9341_RED);
-		  char int_str[30];
-		  char int_stry[30];
-		  //uint16_t test=5;
+		  ili9341_fill_screen(_screen, ILI9341_BLUE);
+		  char int_str[20];
+		  uint16_t test=5;
 		  sprintf(int_str, "%d", x1);
-		  sprintf(int_stry, "%d", y1);
 		  ili9341_draw_string(_screen, textAttr, int_str);
-		  ili9341_draw_string(_screen, textAttr1, int_stry);
 		  //ili9341_draw_string(_screen, textAttr, "         "+y1);
-
+		  lcdStatus=0;
 	  }
-	  if(lcdStatus==1)
-	  {
-		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,(GPIO_PinState)1);
-	  }
-	  if(lcdStatus==0)
-	  	  {
-	  		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13,GPIO_PIN_RESET);
-	  	  }
 
 
 	  //ILI9341_Fill_Screen(YELLOW);
 	  //uartBuff1[0]=0;
-*/
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -586,7 +556,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	//HAL_Delay(1);
 	//if (htim->Instance == htim2.Instance)
 	  //{
-	//HAL_UART_Transmit_IT(&huart1, uartBuff1, 513); //začne pozdě číst?
+	HAL_UART_Transmit_IT(&huart1, uartBuff1, 513); //začne pozdě číst?
 	  //}
 	//HAL_UART_Transmit(&huart1, 255, 1,100); //Proč
 	//HAL_UART_Transmit(&huart1, uartBuff1, 513,100);
