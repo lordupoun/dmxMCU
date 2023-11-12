@@ -92,7 +92,7 @@ FillZerobss:
 
 LoopFillZerobss:
   cmp r2, r4
-  bcc FillZerobss
+   bcc FillZerobss
 
 /* Call static constructors */
     bl __libc_init_array
