@@ -72,7 +72,7 @@ Reset_Handler:
 
 CopyDataInit:
   ldr r4, [r2, r3]
-  str r4, [r0, r3]
+    str r4, [r0, r3]
   adds r3, r3, #4
 
 LoopCopyDataInit:
@@ -92,7 +92,7 @@ FillZerobss:
 
 LoopFillZerobss:
   cmp r2, r4
-  bcc FillZerobss
+   bcc FillZerobss
 
 /* Call static constructors */
     bl __libc_init_array
